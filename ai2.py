@@ -5,10 +5,19 @@ import random
 import time
 import sys
 import os
+import cv2 as cv
 
-circle = "/home/wnlab4/Downloads/Circle1.jpg"
-square = "/home/wnlab4/Downloads/square1.jpg"
-triangle = "/home/wnlab4/Downloads/Triangle1.jpg"
+#circle = "/home/wnlab4/Downloads/Circle1.jpg"
+#square = "/home/wnlab4/Downloads/square1.jpg"
+#triangle = "/home/wnlab4/Downloads/Triangle1.jpg"
+
+#circle = 'https://www.youtube.com/watch?v=zR3wbEudD1I'
+#square = 'https://www.youtube.com/watch?v=QwgWhYr8hfA'
+#triangle = 'https://www.youtube.com/watch?v=W77eGvscpmU'
+
+circle = '/home/wnlab4/circlevid.webm'
+square = '/home/wnlab4/squarevid.webm'
+triangle = '/home/wnlab4/trianglevid.webm'
 
 np.set_printoptions(suppress=True)
 class_names = open("labelsedge.txt", "r").readlines()
@@ -33,14 +42,15 @@ if vimage == imagelist[2]:
 	correct = 'triangle'
 print(correct)
 
-def modelpred(interpreter, classlist, minconf):
+
+def modelpred(interpreter, classlist, minconf, image):
 	interpreter.allocate_tensors()
 	input_details = interpreter.get_input_details()
 	output_details = interpreter.get_output_details()
 	height = input_details[0]['shape'][1]
-	width = input_details[0]['shape'][2]
-	img = Image.open(vimage).resize((width, height))
-	img = img.convert('RGB')
+	width = input_details[0]['shape'][2]	
+	
+	img = image.resize((width, height))
 	input_data = np.array(img).reshape(input_details[0]['shape'])/255.0 # reshape eliminates needs for expand_dims
 	if input_details[0]['quantization_parameters']['scales'].size > 0: # if it is quantized, divide by scaling parameter
 		input_data = np.array(input_data/input_details[0]['quantization_parameters']['scales'])
@@ -59,11 +69,16 @@ def modelpred(interpreter, classlist, minconf):
 		return [None, time_total]
 	else:
 		return[class_name[2:].strip(), time_total]
+cap = cv.VideoCapture(vimage)
 while True:
-	x = modelpred(interpreter1, class_names, 0.65)
+	ret,frame = cap.read()
+	if ret:
+		print('One frame read')
+	pil_image = Image.fromarray(cv.cvtColor(frame, cv.COLOR_BGR2RGB))
+	x = modelpred(interpreter1, class_names, 0.65, pil_image)
 	print('Model 1 : ')
 	print(x)
-	y = modelpred(interpreter2, class_names2, 0.65)
+	y = modelpred(interpreter2, class_names2, 0.65, pil_image)
 	print('Model 2 : ')
 	print(y)
 	if x[0] == correct and y[0] != correct:
@@ -101,3 +116,5 @@ while True:
 	if z == 2:
 		print('Model 1 wins by forfeit')
 		break	
+	if cv.waitKey(20) & 0xFF == ord('q'):
+		break    
